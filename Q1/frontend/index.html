@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Q1 美股研究回测</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <div class="eyebrow">Q1 / US Single-Agent Research</div>
+          <h1>美股事件研究与回测</h1>
+          <p id="dataset-summary">正在加载数据集信息...</p>
+        </div>
+        <div class="hero-card">
+          <div class="hero-label">运行方式</div>
+          <code>cd Q1/backend && python3 server.py</code>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>数据源</h2>
+            <p>保留数据源边界和接口，但 Q1 版本只复用已有数据集。</p>
+          </div>
+          <div id="source-list" class="source-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>数据集</h2>
+            <p>直接使用已经落库的真实历史数据集。</p>
+          </div>
+          <div id="dataset-library" class="dataset-library"></div>
+          <div id="dataset-detail" class="dataset-detail"></div>
+        </section>
+
+        <section class="panel controls">
+          <div class="panel-head">
+            <h2>回测参数</h2>
+          </div>
+          <form id="backtest-form">
+            <label>
+              数据集
+              <select name="dataset_id" id="dataset-select"></select>
+            </label>
+            <label>
+              初始资金
+              <input type="number" name="initial_capital" min="10000" step="1000" />
+            </label>
+            <label>
+              调仓间隔（交易日）
+              <input type="number" name="rebalance_interval" min="2" max="30" step="1" />
+            </label>
+            <label>
+              最大持仓数
+              <input type="number" name="max_positions" min="1" max="5" step="1" />
+            </label>
+            <label>
+              单票权重上限
+              <input type="number" name="max_position_weight" min="0.1" max="0.7" step="0.05" />
+            </label>
+            <label>
+              起始日期
+              <input type="date" name="start_date" />
+            </label>
+            <label>
+              结束日期
+              <input type="date" name="end_date" />
+            </label>
+            <button type="submit" id="run-button">运行回测</button>
+          </form>
+          <div id="notes" class="notes"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>结果概览</h2>
+            <p id="result-range">先运行一次回测。</p>
+          </div>
+          <div id="metric-grid" class="metric-grid"></div>
+          <div class="chart-wrap">
+            <svg id="equity-chart" viewBox="0 0 900 320" aria-label="equity chart"></svg>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>调仓记录</h2>
+            <p>展示每次 Agent 研究结论和最终组合建议。</p>
+          </div>
+          <div id="decision-list" class="decision-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>交易流水</h2>
+            <p>只显示最关键的调仓动作。</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>交易日</th>
+                  <th>决策日</th>
+                  <th>股票</th>
+                  <th>方向</th>
+                  <th>名义金额</th>
+                </tr>
+              </thead>
+              <tbody id="trade-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
