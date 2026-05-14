@@ -1,5 +1,8 @@
+# LLM 增强的量化研究工作流
 
-本仓库包含两个项目：**Q1** 为美股日频单 Agent 研究与回测 Demo；**Q2** 为 Agent 驱动的自动化特征工程（方向 A）。运行前请阅读根目录 [`mustRead.md`](mustRead.md)（作者已移除 API Key，需自行配置后再跑）。
+一套面向研究与原型的 **双模块仓库**：**Q1** 把规则层选股/风控与 **单 Agent（LLM）** 的结构化研究判断接在同一套回测闭包里；**Q2** 把 **工具调用型 Agent** 嵌进可执行的清洗—评估—筛选流水线，并与确定性数值计算、**LightGBM** 验证对齐。适合作为个人实验台或组件参考，按需拆开使用。
+
+使用前请阅读 [`mustRead.md`](mustRead.md)：仓库内未提交任何 API Key，需自行配置环境变量或 `.env` 后再运行。
 
 ---
 
@@ -7,29 +10,29 @@
 
 | 路径 | 说明 |
 |------|------|
-| [`mustRead.md`](mustRead.md) | API 与最低成本复现说明 |
-| [`Q1/`](Q1/) | 美股回测：轻量前端 + Python `http.server` 后端 + SQLite |
-| [`Q2/`](Q2/) | 特征工程：DeepSeek 工具调用 Agent + 向量化指标 + LightGBM |
-| `data.pq`（需自备） | Q2 使用的面板数据，放在**本仓库根目录**（与 `Q1/`、`Q2/` 同级） |
+| [`mustRead.md`](mustRead.md) | API、最低配置成本与运行提示 |
+| [`Q1/`](Q1/) | **Research Workbench**：美股日频、轻量前端 + 标准库 HTTP 服务 + SQLite |
+| [`Q2/`](Q2/) | **FeatureAgent Pipeline**：OpenAI 兼容模型 + `exec_python` / `log_decision` + IC/AUC 等向量化指标 + LightGBM |
+| `data.pq`（自备） | Q2 使用的面板数据，置于**仓库根目录**（与 `Q1/`、`Q2/` 同级） |
 
-详细设计文档：
+深度设计说明：
 
 - Q1：[`Q1/Q1.md`](Q1/Q1.md)
 - Q2：[`Q2/Q2.md`](Q2/Q2.md)
 
 ---
 
-## 通用：API Key
+## 配置：LLM 与外部 API
 
-作者为隐私已清空密钥。**Q1 最低成本**：仅配置 DeepSeek（或任意 OpenAI 兼容端点）即可启动 [`Q1/backend/server.py`](Q1/backend/server.py)，在浏览器里跑回测（数据集导入结果已缓存于项目中，无需再拉全量外部数据）。**Q2**：同样需要可用的 LLM API（与 Q1 类似，通过环境变量或 `.env` 注入）。
+出于隐私，本仓库不包含密钥。**Q1** 在仅配置 DeepSeek（或任意 OpenAI 兼容端点）时即可启动 [`Q1/backend/server.py`](Q1/backend/server.py) 并在浏览器中跑通主链路；默认 SQLite 中已带有可读的缓存数据集，不必立刻接入全部行情源。**Q2** 同样需要可用的 LLM，变量名与注入方式见下文各模块。
 
 ---
 
-## Q1：美股单 Agent 回测
+## Q1：美股研究与回测工作台（Research Workbench）
 
-### 做什么
+### 能力概览
 
-规则层生成候选股与市场状态 → **单 Agent（LLM）** 输出结构化 research card（enter / hold / trim / reject）→ 规则层落仓；按交易日推进，T 日收盘决策、T+1 开盘调仓。前端为静态 HTML/CSS/JS，净值曲线用 SVG 自绘，无重型框架。
+规则层生成候选股与市场状态 → **单 Agent（LLM）** 输出结构化 research card（`enter` / `hold` / `trim` / `reject`）→ 规则层落仓；按交易日推进，T 日收盘决策、T+1 开盘调仓。前端为静态 HTML/CSS/JS，净值曲线用 SVG 自绘，刻意避免重型框架，便于迁移与阅读。
 
 更完整的流程、打分公式与 Agent I/O 约束见 [`Q1/Q1.md`](Q1/Q1.md)。
 
@@ -55,17 +58,17 @@ python server.py
 
 默认监听 **`http://127.0.0.1:8010`**（可通过环境变量 `Q1_PORT` 修改）。浏览器打开该地址即可使用可视化回测界面。
 
-### 数据与复现数据集
+### 数据与数据源
 
-- 默认使用内置数据集 ID `hetero_trade_mas_cache_us_v1`，数据来自本地 SQLite（见启动时 bootstrap 说明）。
-- 若需**完整复现**从外部拉数与导入流程，需在 `Q1/backend/.env` 中配置 Alpaca、FMP、Finnhub、EODHD、SEC、FRED 等（详见 [`Q1/backend/app/config.py`](Q1/backend/app/config.py) 中 `Settings` 字段）。
-- 运行结果截图可参考 `Q1/` 下作者提供的图片（如 `Q1.png` 等）。
+- 默认使用数据集 ID `hetero_trade_mas_cache_us_v1`，由本地 SQLite 提供（启动时 bootstrap 会说明路径与备注）。
+- 若要**从外部重新构建**数据导入链路，在 `Q1/backend/.env` 中配置 Alpaca、FMP、Finnhub、EODHD、SEC、FRED 等（字段见 [`Q1/backend/app/config.py`](Q1/backend/app/config.py) 内 `Settings`）。
+- 界面效果可参考仓库内 `Q1/` 下的截图（如 `Q1.png`）。
 
 ---
 
-## Q2：Agent 驱动的自动化特征工程（方向 A）
+## Q2：可执行的特征工程 Agent（Feature Pipeline）
 
-### 做什么
+### 能力概览
 
 **FeatureAgent**（DeepSeek + function calling）通过 `exec_python` 在共享 `state` 上执行代码，配合 `log_decision` 记录决策；流程为 **Diagnose → Clean → Evaluate → Select**，其中大规模 IC / AUC / 相关矩阵由确定性 Python 向量化计算，Agent 侧重诊断、清洗策略与筛选逻辑。最终用 **Top 50 特征 + LightGBM** 在 **70%/30% 按日期** 的训练/测试切分下做二分类验证（标签 **Y7**，去掉中性类 `0`）。
 
@@ -73,7 +76,7 @@ python server.py
 
 ### 数据
 
-将题目提供的 **`data.pq` 放在仓库根目录**（路径与 `Q2/run.py` 中 `../data.pq` 一致）。
+将你的 **`data.pq`**（面板格式，与代码中列约定一致）放在**仓库根目录**，使 `Q2/run.py` 中的 `../data.pq` 能正确解析。
 
 ### 环境与依赖
 
@@ -105,7 +108,7 @@ python run.py
 
 产物在 `Q2/outputs/`（图表与 CSV 等）。
 
-**Notebook（提交/展示）：**
+**Jupyter Notebook（交互分析、可保留 cell 输出）：**
 
 ```bash
 cd Q2
@@ -118,8 +121,8 @@ jupyter notebook Q2.ipynb
 
 ---
 
-## 许可证与致谢
+## 许可证与合规
 
-本项目为笔试/课程提交用途；外部数据与 API 使用须遵守各提供方条款。
+代码以研究与学习用途分享；引用的外部数据与第三方 API 须遵守各自服务条款与授权范围。
 
-如有问题，可先对照 [`mustRead.md`](mustRead.md) 与各子目录下的 `Q1.md` / `Q2.md`。
+起步文档：[`mustRead.md`](mustRead.md)；模块级深度说明：[`Q1/Q1.md`](Q1/Q1.md)、[`Q2/Q2.md`](Q2/Q2.md)。
